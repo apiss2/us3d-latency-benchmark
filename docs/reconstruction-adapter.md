@@ -3,7 +3,7 @@
 利用者が実装したコマンドを、次の呼び出し規約に接続してください。Python以外の実装でも構いません。
 
 ```text
-<your command> --request <request.json> --output <reconstruction.pending.npz>
+<your command> --request <request.json> --output <temporary-output.npz>
 ```
 
 `run` はシェル文字列を評価せず、引数配列としてコマンドを起動します。成功時はexit code 0で、指定した出力ファイルを作成します。失敗時は非0で終了します。
@@ -48,4 +48,6 @@
 
 手書きの出力仕様は [`examples/reconstruction-output.json`](../examples/reconstruction-output.json) を参照してください。これはNPZの代わりに返すJSONではありません。
 
-`run` は成功した一時出力を検証してから `reconstruction.npz` に確定します。case IDと元入力hashが一致する既存出力は再利用します。再構成アルゴリズムや欠損方針を変更する際は新しいrunを作ってください。
+`run` は呼び出しごとに専用の空の一時ディレクトリを作ります。アダプターは、今回指定された `--output` パスへ新しいファイルを作成してください。exit code 0でも出力がなければ失敗です。成功した一時出力だけを検証して `reconstruction.npz` に確定し、呼び出し専用の一時ディレクトリは失敗時も片付けます。
+
+case IDと元入力hashが一致する完成済み出力は再利用し、削除しません。再構成アルゴリズムや欠損方針を変更する際は新しいrunを作ってください。

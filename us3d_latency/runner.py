@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import subprocess
+from tempfile import TemporaryDirectory
 import numpy as np
 from .conditions import digest
 from .contracts import read_json, write_json, load_volume, require
@@ -37,12 +38,14 @@ def reconstruct(run, command):
                 require(verified[name] == value["sha256"], "Acquisition input changed after prepare")
             output = folder / "reconstruction.npz"
             if not output.exists():
-                temporary = folder / "reconstruction.pending.npz"
-                with (folder / "adapter.log").open("w", encoding="utf-8") as log:
-                    subprocess.run([*command, "--request", str(folder / "request.json"), "--output", str(temporary)], check=True, stdout=log, stderr=subprocess.STDOUT, env=environment)
-                _, _, metadata = load_volume(temporary)
-                require(metadata["case_id"] == request["case_id"], "Adapter returned a different case ID")
-                temporary.replace(output)
+                # 呼び出し専用の空ディレクトリなら、過去の出力を成功扱いできない。
+                with TemporaryDirectory(prefix=".reconstruction-", dir=folder) as directory:
+                    temporary = Path(directory) / "output.npz"
+                    with (folder / "adapter.log").open("w", encoding="utf-8") as log:
+                        subprocess.run([*command, "--request", str(folder / "request.json"), "--output", str(temporary)], check=True, stdout=log, stderr=subprocess.STDOUT, env=environment)
+                    _, _, metadata = load_volume(temporary)
+                    require(metadata["case_id"] == request["case_id"], "Adapter returned a different case ID")
+                    temporary.replace(output)
             _, _, metadata = load_volume(output)
             require(metadata["case_id"] == request["case_id"], "Cached output belongs to another case")
             print(request["case_id"], "ready", flush=True)

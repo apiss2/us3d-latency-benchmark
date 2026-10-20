@@ -74,6 +74,7 @@ def score_volume(volume, transform, settings):
     metrics.update(iou=binary_iou(binary, truth), volume_mm3=float(binary.sum() * settings["voxel_mm"] ** 3),
                    translated_iou=None, centroid_x_mm=None, centroid_y_mm=None, centroid_z_mm=None)
     indices = np.nonzero(binary)
+    # 補正IoUはROI全体の前景で定義し、真値長さ内だけの中心統計とは分ける。
     if len(indices[0]):
         centroid = np.array([axes[0][indices[2]].mean(), axes[1][indices[1]].mean(), axes[2][indices[0]].mean()])
         target = np.array([*settings["cylinder_center_xy_mm"], settings["cylinder_length_mm"] / 2])

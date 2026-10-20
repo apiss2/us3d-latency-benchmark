@@ -5,6 +5,7 @@ import sys
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 import numpy as np
 from us3d_latency.conditions import missing_indices, paired_arrays, prepare
 from us3d_latency.contracts import read_json, write_json, load_dataset, load_volume, relative_file
@@ -102,6 +103,22 @@ class BenchmarkTests(unittest.TestCase):
         self.assertEqual(metrics["iou"], 0)
         self.assertEqual(metrics["detection_rate"], 0)
         self.assertIsNone(metrics["center_rmse_mm"])
+        self.assertIsNone(metrics["translated_iou"])
+        self.assertIsNone(metrics["centroid_z_mm"])
+
+    def test_foreground_only_outside_truth_length_still_has_corrected_iou(self):
+        settings = toy_config()["evaluation"]
+        settings["roi_xyz_mm"][2] = [-1, 5]
+        transform = np.array(FIXTURE["index_to_world_mm"], dtype=float)
+        transform[2, 3] += 2
+        metrics, _ = score_volume(np.array(FIXTURE["volume"], dtype=np.uint8), transform, settings)
+        self.assertEqual(metrics["iou"], 0)
+        self.assertEqual(metrics["detection_rate"], 0)
+        self.assertEqual(metrics["undetected_section_rate"], 1)
+        for name in ["bias_x_mm", "bias_y_mm", "bias_norm_mm", "center_rmse_mm", "center_variation_mm", "center_max_mm"]:
+            self.assertIsNone(metrics[name])
+        self.assertEqual(metrics["centroid_z_mm"], 3)
+        self.assertEqual(metrics["translated_iou"], 1)
 
     def test_roi_overflow_and_path_escape_are_rejected(self):
         transform = np.array(FIXTURE["index_to_world_mm"], dtype=float)
@@ -144,6 +161,66 @@ class BenchmarkTests(unittest.TestCase):
             np.save(root / "images.npy", np.array([[[1]], [[2]]], dtype=np.uint8))
             with self.assertRaises(ValueError):
                 reconstruct(run, [sys.executable, str(ROOT / "tests" / "fixture_adapter.py")])
+
+    def test_failed_adapter_output_cannot_be_promoted_by_a_no_output_retry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = root / "run"
+            prepare(toy_dataset(root), toy_config(), run)
+            folder = run / "straight_v5_k0_clean"
+            output = folder / "reconstruction.npz"
+            attempts = []
+
+            def write_fixture(command):
+                request = read_json(command[command.index("--request") + 1])
+                target = Path(command[command.index("--output") + 1])
+                attempts.append(target)
+                self.assertFalse(target.exists())
+                metadata = {"case_id": request["case_id"], "method": "fixture", "missing_pose_policy": "fixture"}
+                np.savez_compressed(target, volume=np.array(FIXTURE["volume"], dtype=np.uint8), index_to_world_mm=np.array(FIXTURE["index_to_world_mm"], dtype=float), metadata_json=np.array(json.dumps(metadata)))
+                return target
+
+            def fail_after_writing(command, **kwargs):
+                write_fixture(command)
+                raise subprocess.CalledProcessError(7, command)
+
+            with patch("us3d_latency.runner.subprocess.run", side_effect=fail_after_writing):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    reconstruct(run, ["test-adapter"])
+            self.assertFalse(attempts[0].exists())
+            self.assertFalse(output.exists())
+            self.assertFalse((run / ".adapter.lock").exists())
+
+            # 旧形式のvalid pendingが残っていても、今回の出力として使ってはいけない。
+            legacy = folder / "reconstruction.pending.npz"
+            metadata = {"case_id": "straight_v5_k0_clean", "method": "fixture", "missing_pose_policy": "fixture"}
+            np.savez_compressed(legacy, volume=np.array(FIXTURE["volume"], dtype=np.uint8), index_to_world_mm=np.array(FIXTURE["index_to_world_mm"], dtype=float), metadata_json=np.array(json.dumps(metadata)))
+            legacy_bytes = legacy.read_bytes()
+
+            def succeed_without_output(command, **kwargs):
+                attempts.append(Path(command[command.index("--output") + 1]))
+                return subprocess.CompletedProcess(command, 0)
+
+            with patch("us3d_latency.runner.subprocess.run", side_effect=succeed_without_output):
+                with self.assertRaises(FileNotFoundError):
+                    reconstruct(run, ["test-adapter"])
+            self.assertNotEqual(attempts[0], attempts[1])
+            self.assertFalse(output.exists())
+            self.assertEqual(legacy.read_bytes(), legacy_bytes)
+            self.assertFalse((run / ".adapter.lock").exists())
+
+            def succeed_with_output(command, **kwargs):
+                write_fixture(command)
+                return subprocess.CompletedProcess(command, 0)
+
+            with patch("us3d_latency.runner.subprocess.run", side_effect=succeed_with_output):
+                reconstruct(run, ["test-adapter"])
+            completed_bytes = output.read_bytes()
+            with patch("us3d_latency.runner.subprocess.run") as adapter:
+                reconstruct(run, ["test-adapter"])
+                adapter.assert_not_called()
+            self.assertEqual(output.read_bytes(), completed_bytes)
+            self.assertFalse(list(folder.glob(".reconstruction-*")))
 
     def test_output_dtype_and_left_handed_grid_are_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
