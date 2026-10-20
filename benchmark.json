@@ -1,0 +1,18 @@
+{
+  "format_version": 1,
+  "fps": 30,
+  "paths": ["straight", "curve", "serpentine"],
+  "speeds_mm_s": [5, 10, 15],
+  "delays_frames": [0, 1, 2, 3, 4, 5, 6],
+  "missing_pose_count": 5,
+  "seeds": [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008],
+  "image": {"shape_yx": [400, 400], "spacing_xy_mm": [0.1, 0.1], "origin_xy_pixels": [200, 0]},
+  "evaluation": {
+    "voxel_mm": 0.2,
+    "roi_xyz_mm": [[-12, 12], [8, 32], [-8, 88]],
+    "threshold": 128,
+    "cylinder_radius_mm": 4,
+    "cylinder_length_mm": 80,
+    "cylinder_center_xy_mm": [0, 20]
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "format_version": 1,
+  "case_id": "straight_v5_k6_seed1001",
+  "path": "straight",
+  "speed_mm_s": 5,
+  "fps": 30,
+  "delay_frames": 6,
+  "delay_ms": 200,
+  "seed": 1001,
+  "image_count": 601,
+  "missing_count": 5,
+  "units": "mm",
+  "inputs": {
+    "images": {"file": "data/straight_v5/images.npy", "sha256": "<computed by prepare>"},
+    "poses": {"file": "data/straight_v5/poses.npy", "sha256": "<computed by prepare>"},
+    "image_times_s": {"file": "data/straight_v5/image_times_s.npy", "sha256": "<computed by prepare>"},
+    "pose_times_s": {"file": "data/straight_v5/pose_times_s.npy", "sha256": "<computed by prepare>"}
+  },
+  "image": {"shape_yx": [400,400], "spacing_xy_mm": [0.1,0.1], "origin_xy_pixels": [200,0]},
+  "condition_file": "runs/example/straight_v5_k6_seed1001/condition.npz",
+  "requested_output_voxel_mm": 0.2,
+  "output_contract": "uint8 volume[z,y,x] and index_to_world_mm[4,4]"
+}

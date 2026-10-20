@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "units": "mm",
+  "fps": 30,
+  "scans": [
+    {
+      "id": "straight_v5",
+      "path": "straight",
+      "speed_mm_s": 5,
+      "images": "straight_v5/images.npy",
+      "image_times_s": "straight_v5/image_times_s.npy",
+      "poses": "straight_v5/poses.npy",
+      "pose_times_s": "straight_v5/pose_times_s.npy"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+data/
+runs/
+summary/
+*.blend1
+*.blend2
+.DS_Store

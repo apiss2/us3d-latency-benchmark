@@ -1,0 +1,6 @@
+{
+  "description": "Hand-written NPZ schema illustration; the adapter returns an NPZ rather than this JSON",
+  "volume": {"dtype": "uint8", "shape_order": ["z", "y", "x"], "range": [0,255]},
+  "index_to_world_mm": [[0.2,0,0,-12],[0,0.2,0,8],[0,0,0.2,-8],[0,0,0,1]],
+  "metadata_json": {"case_id": "<request case_id>", "method": "<implementation and version>", "missing_pose_policy": "<chosen policy>"}
+}
